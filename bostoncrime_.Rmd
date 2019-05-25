@@ -1,0 +1,149 @@
+---
+title: "Boston"
+author: "Zyc"
+date: "2019/5/24"
+output: html_document
+---
+
+1.map plot
+```{r}
+library(maptools)
+library(ggplot2)
+library(tidyverse)
+library(rgdal)
+area=readOGR("/Users/serena_zhao/downloads/Boston_Neighborhoods/Boston_Neighborhoods.shp")
+
+area.points=fortify(area)
+#change the name here
+df= setNames(data.frame(matrix(ncol = 1, nrow = nrow(area.points))), c("group2"))
+area.points=cbind(area.points,df)
+
+
+area.points$group2=ifelse(area.points$group==0.1,"Hyde Park",
+ifelse(area.points$group==0.2,"West Roxbury",
+ifelse(area.points$group==0.3,"West Roxbury",
+ifelse(area.points$group==1.1,"Jamaica Plain",
+ifelse(area.points$group==2.1,"Roxbury",
+ifelse(area.points$group==3.1,"Roxbury",
+ifelse(area.points$group==4.1,"Downtown",
+ifelse(area.points$group==5.1,"Downtown",
+ifelse(area.points$group==6.1,"Downtown",
+ifelse(area.points$group==7.1,"Downtown",
+ifelse(area.points$group==8.1,"Roxbury",
+ifelse(area.points$group==9.1,"South End/Back Bay/Fenway",
+ifelse(area.points$group==10.1,"South End/Back Bay/Fenway",
+ifelse(area.points$group==11.1,"East Boston",
+ifelse(area.points$group==12.1,"Charlestown",
+ifelse(area.points$group==12.2,"Downtown",
+ifelse(area.points$group==13.1,"Downtown",
+ifelse(area.points$group==13.2,"Charlestown",
+ifelse(area.points$group==13.3,"Downtown",
+ifelse(area.points$group==14.1,"Downtown",
+ifelse(area.points$group==15.1,"Downtown",
+ifelse(area.points$group==16.1,"South End/Back Bay/Fenway",
+ifelse(area.points$group==17.1,"Brighton",
+ifelse(area.points$group==18.1,"West Roxbury",
+ifelse(area.points$group==19.1,"Hyde Park",
+ifelse(area.points$group==20.1,"Mattapan",
+ifelse(area.points$group==21.1,"Dorchester",
+ifelse(area.points$group==21.2,"Dorchester",
+ifelse(area.points$group==22.1,"South Boston",
+ifelse(area.points$group==23.1,"South Boston",
+ifelse(area.points$group==23.2,"South Boston",
+ifelse(area.points$group==24.1,"Brighton","NA"))))))))))))))))))))))))))))))))
+
+                                                                              
+districts=data.frame(unique(area.points$group2))
+
+#delete the NA islands
+library(dplyr)
+area.points=filter(area.points,group2!= "NA")
+
+library(RColorBrewer)
+library(ggplot2)
+ggplot(area.points,aes(x=long, y=lat, group=group, fill=group2, label=group2,scale_colour_brewer(palette="Blues")))+geom_polygon()+theme_void()+
+  scale_colour_brewer(palette="Blues")
+  
+df2= setNames(data.frame(matrix(ncol = 1, nrow = nrow(area.points))), c("violent"))
+area.points=cbind(area.points,df2)
+
+area.points$violent=ifelse(area.points$group2=="Downtown",3408,
+ifelse(area.points$group2=="Brighton",1390,
+ifelse(area.points$group2=="Charlestown",478,
+ifelse(area.points$group2=="Dorchester",3406,
+ifelse(area.points$group2=="East Boston",1114,
+ifelse(area.points$group2=="Hyde Park",1364,
+ifelse(area.points$group2=="Jamaica Plain",1236,
+ifelse(area.points$group2=="Mattapan",3285,
+ifelse(area.points$group2=="Roxbury",4632,
+ifelse(area.points$group2=="South Boston",1815,
+ifelse(area.points$group2=="South End/Back Bay/Fenway",3329,
+ifelse(area.points$group2=="West Roxbury",944,"NA"))))))))))))
+
+
+
+library(lubridate)
+library(cdata)
+area.points=arrange(area.points,(violent))
+
+
+ggplot(area.points,aes(x=long, y=lat, group=group, fill=violent))+geom_polygon()+
+  ggtitle("Total Number of Violent Crimes by Area from 2015 to 2018")+theme_light()+
+  theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank())+
+  theme(panel.background = element_rect(fill = "lightgrey"),plot.background = element_rect(fill = "lightgrey"))+
+  scale_fill_manual(values = c("aliceblue", "powderblue","lightskyblue","deepskyblue",
+                               "dodgerblue","steelblue","blue","mediumblue","darkblue","navy","midnightblue","black"))
+```
+
+read data
+```{r}
+data<- read.csv("/Users/serena_zhao/downloads/bostoncrime.csv",stringsAsFactors = F,na.strings = NA)
+```
+
+2.time series 2018 accroding to seasons
+```{r}
+library(lubridate)
+mydata<-data
+mydata$OCCURRED_ON_DATE<-ymd_hm(mydata$OCCURRED_ON_DATE)
+
+mydata<-mydata[which(year(mydata$OCCURRED_ON_DATE)==2018),]
+temp3<-summarise(group_by(mydata,date(OCCURRED_ON_DATE)),count_num=n())
+colnames(temp3)<-c('date','count')
+temp3$month<-month(temp3$date) 
+for (i in 1:length(temp3$month)){
+  if(temp3$month[i]>=3&temp3$month[i]<=4){
+    temp3$season[i]='Spring'
+    
+  }else if(temp3$month[i]>=5&temp3$month[i]<=8){
+    temp3$season[i]='Summer'
+  }else if(temp3$month[i]>=9&temp3$month[i]<=10){
+    temp3$season[i]='Fall'
+  }else{
+    temp3$season[i]='Winter'
+  }
+    
+  
+
+   i=i+1
+}
+temp3
+ggplot(temp3,aes(x=date,y=count,color=season))+geom_line()
+```
+
+
+3.show the crime frequency in each hour one day everyweek(heatmap)
+```{r}
+temp1<-summarise(group_by(data,DAY_OF_WEEK,HOUR),frequency=n())
+temp1$DAY_OF_WEEK<-ordered(temp1$DAY_OF_WEEK,c('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'))
+ggplot(temp1,aes(x=factor(HOUR),y=factor(DAY_OF_WEEK),fill=frequency))+geom_tile()+theme_classic()+xlab("Hour")+ylab("Week")+scale_fill_gradient('frequency', low = "lightyellow", high = "steelblue") 
+```
+
+4.check the account for offense type percentage
+```{r}
+library(dplyr)
+library(ggplot2)
+library(treemapify)
+temp<-summarise(group_by(data,`OFFENSE_CODE_GROUP`),count=n())
+
+ggplot(temp,aes(area=count,label=`OFFENSE_CODE_GROUP`))+geom_treemap(fill='skyblue',color='black')+geom_treemap_text(fontface = "italic", colour = "black",position = "identity",grow = FALSE)+ggtitle("Tree Maps for Comparison + Part to Whole")
+```
